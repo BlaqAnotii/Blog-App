@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:ffi';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart';
@@ -11,8 +12,8 @@ class NewsProvider with ChangeNotifier {
   List receivedNews = [];
   List get received => receivedNews;
 
-  addNews(String title, String body) {
-    receivedNews.add(News(title: title, body: body));
+  removeNews(String title, String body, String author, int id) {
+    receivedNews.remove(News(title: title, body: body, author: author, id: id));
     notifyListeners();
   }
 }

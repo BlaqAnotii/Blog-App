@@ -3,7 +3,11 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
+import 'package:sharedpreference/edit_post.dart';
 import 'package:sharedpreference/model/newsfeed.dart';
+import 'package:sharedpreference/model/user.dart';
+import 'package:sharedpreference/preference/user_preference.dart';
+import 'package:sharedpreference/provider/blog_provider.dart';
 import 'package:sharedpreference/provider/newsfeed_provider.dart';
 import 'package:sharedpreference/utility/http_service.dart';
 import 'package:sharedpreference/utility/util.dart';
@@ -16,7 +20,11 @@ class NewsFeedScreen extends StatefulWidget {
 }
 
 class _NewsFeedScreenState extends State<NewsFeedScreen> {
-  Future getNews() async {
+  Future<User> getUser() => UserPreference().getUser();
+   String username = "";
+   String token = "";
+
+    Future getNews() async {
     final response = await http.get(Uri.parse(HttpService.blogs));
 
     List<News> news = [];
@@ -26,6 +34,7 @@ class _NewsFeedScreenState extends State<NewsFeedScreen> {
 
       for (var json in jsons['data']) {
         News newPost = News.fromJson(json);
+        
         print(newPost.body);
         news.add(newPost);
       }
@@ -35,9 +44,21 @@ class _NewsFeedScreenState extends State<NewsFeedScreen> {
     return news;
   }
 
+   @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+     getUser().then((value)  {
+        username = value.user;
+        token = value.token;
+        print(username);
+      
+      });
+  }
+
   @override
   Widget build(BuildContext context) {
-    final myNews = Provider.of<NewsProvider>(context);
+    
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -65,25 +86,53 @@ class _NewsFeedScreenState extends State<NewsFeedScreen> {
                       physics: const BouncingScrollPhysics(),
                       shrinkWrap: true,
                       itemCount: snapshot.data.length,
-                      itemBuilder: (context, i) {
+                      itemBuilder: (context, index) {
                         return Container(
                           margin: const EdgeInsets.fromLTRB(0, 10, 0, 10),
                           child: ListTile(
-                              leading: const Icon(Icons.edit),
-                              title: textInfo("${snapshot.data[i].title}",
-                                  FontWeight.w600, Colors.blue, 15),
-                              subtitle: textInfo("${snapshot.data[i].body}",
-                                  FontWeight.w300, Colors.black, 13),
-                              trailing: ElevatedButton(
-                                style: const ButtonStyle(
-                                  backgroundColor: 
-                                  MaterialStatePropertyAll(Colors.blue)),
-                                  onPressed: () {
-                                    //myNews.addNews("${snapshot.data[i].title}", "${snapshot.data[i].body}");
+                              leading: Container(
+                                padding: const EdgeInsets.only(top: 20),
+                                child: username == snapshot.data![index].author
+                                ?
+                                 ElevatedButton(
+                                  onPressed: (){
+                                    Navigator.push(context,
+                                     MaterialPageRoute(builder:
+                                      (context) => EditPost(id: snapshot.data![index].id, 
+                                      title: snapshot.data![index].title, 
+                           body: snapshot.data![index].body)));
                                   },
-                                 // icon: const Icon(Icons.cancel),
-                                  child: const Text("Delete",
-                                  style: TextStyle(color: Colors.white),))),
+                                  child: const Icon(Icons.edit))
+                                  : const SizedBox()
+                              ),
+                              title: textInfo("${snapshot.data[index].title}",
+                                  FontWeight.w600, Colors.blue, 15),
+                              subtitle: textInfo("${snapshot.data[index].body}",
+                                  FontWeight.w300, Colors.black, 13),
+                              trailing: username == snapshot.data![index].author
+                              ?Container(
+                                padding: const EdgeInsets.only(top: 20),
+                                child: ElevatedButton(
+                                  style: const ButtonStyle(
+                                    backgroundColor: 
+                                    MaterialStatePropertyAll(Colors.blue)),
+                                    onPressed: () {
+                                       BlogProvider().deletePost(snapshot.data![index].author, 
+                            snapshot.data![index].id, token).then((response){
+                                print(response);
+                               HttpService().showMessage(response["message"], context);
+                              BlogProvider().getNews();
+
+
+                            });
+                                      //myNews.addNews("${snapshot.data[i].title}", "${snapshot.data[i].body}");
+                                    },
+                                   // icon: const Icon(Icons.cancel),
+                                    child: const Text("Delete",
+                                    style: TextStyle(color: Colors.white),)),
+                              )
+                              :const SizedBox()
+                              ),
                         );
                       },
                     );

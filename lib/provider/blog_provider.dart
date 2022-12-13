@@ -1,8 +1,10 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:http/http.dart';
 import 'package:sharedpreference/model/blog.dart';
+import 'package:sharedpreference/model/newsfeed.dart';
 import 'package:sharedpreference/provider/auth_provider.dart';
 import 'package:sharedpreference/utility/http_service.dart';
 
@@ -12,6 +14,25 @@ class BlogProvider with ChangeNotifier{
     Status _loadingCircle = Status.notLoading;
 
     Status get loadingCicle => _loadingCircle;
+
+     Future getNews() async {
+    final response = await http.get(Uri.parse(HttpService.blogs));
+
+    List<News> news = [];
+
+    if (response.statusCode == 200) {
+      var jsons = jsonDecode(response.body);
+
+      for (var json in jsons['data']) {
+        News newPost = News.fromJson(json);
+        print(newPost.body);
+        news.add(newPost);
+      }
+    } else {
+      throw Exception("Failed to load");
+    }
+    return news;
+  }
 
     Future<Map<String, dynamic>> savePost(String title, 
     String body, String author, String token) async{
@@ -39,6 +60,58 @@ class BlogProvider with ChangeNotifier{
 
       return response;
     }
+
+     Future<Map<String, dynamic>> updatePost(String title, 
+    String body, int id, String token) async{
+
+      final Map<String, dynamic> bodyPost = {
+        'title': title,
+        'body' : body
+      };
+
+      _loadingCircle = Status.loading;
+      notifyListeners();
+
+      final response = await put(Uri.parse(HttpService.updateblog + id.toString()),
+          headers: {
+            'content-Type' : 'application/json',
+            'Authorization' : 'Bearer $token'
+          },
+          body: json.encode(bodyPost)
+      ).then(onValue)
+      .catchError(onError);
+
+      _loadingCircle = Status.loaded;
+      notifyListeners();
+
+      return response;
+    }
+
+      Future<Map<String, dynamic>> deletePost(String author, 
+    int id, String token) async{
+print(id);
+      final Map<String, dynamic> bodyPost = {
+        'author': author
+      };
+
+      _loadingCircle = Status.loading;
+      notifyListeners();
+
+      final response = await delete(Uri.parse(HttpService.deleteblog + id.toString()),
+          headers: {
+            'content-Type' : 'application/json',
+            'Authorization' : 'Bearer $token'
+          },
+          body: json.encode(bodyPost)
+      ).then(onValue)
+      .catchError(onError);
+
+      _loadingCircle = Status.loaded;
+      notifyListeners();
+
+      return response;
+    }
+
 
 
     static Future onValue(Response response) async{
